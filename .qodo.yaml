@@ -1,0 +1,249 @@
+# Qodo Merge Configuration for shared-utils
+# Cross-repo analysis configuration for shared library
+
+version: 1
+
+# Repository metadata
+metadata:
+  name: shared-utils
+  type: library
+  team: platform
+  language: typescript
+  
+# This is a shared library - define consumers
+consumers:
+  - repo: Shiw2807/orders-service
+    language: javascript
+    import_pattern: "require('shared-utils')"
+    
+  - repo: Shiw2807/payments-service
+    language: python
+    import_pattern: "from shared_utils import"
+    note: "Python wrapper around TypeScript library"
+
+# Exported functions to track for breaking changes
+exports:
+  - name: formatCurrency
+    signature: "formatCurrency(amount: number, locale: string): string"
+    previous_signature: "formatCurrency(amount: number): string"
+    breaking_change: true
+    version_changed: "2.0.0"
+    migration_guide: |
+      The locale parameter is now required.
+      Before: formatCurrency(99.99)
+      After:  formatCurrency(99.99, 'en-US')
+    affected_repos:
+      - Shiw2807/orders-service
+      - Shiw2807/payments-service
+      
+  - name: validateOrderTotal
+    signature: "validateOrderTotal(total: number): boolean"
+    breaking_change: false
+    duplicated_in:
+      - repo: Shiw2807/orders-service
+        files:
+          - src/utils/validation.js
+          - src/services/orderProcessor.js
+          - src/models/Order.js
+          - src/utils/helpers.js
+      - repo: Shiw2807/payments-service
+        files:
+          - src/utils/validation.py
+          
+  - name: calculateTax
+    signature: "calculateTax(amount: number, taxRate?: number): number"
+    breaking_change: false
+    duplicated_in:
+      - repo: Shiw2807/orders-service
+        files:
+          - src/services/orderProcessor.js
+          - src/models/Order.js
+          - src/utils/helpers.js
+          
+  - name: generateOrderId
+    signature: "generateOrderId(): string"
+    breaking_change: false
+    duplicated_in:
+      - repo: Shiw2807/orders-service
+        files:
+          - src/utils/helpers.js
+
+# Cross-repo analysis settings
+cross_repo_analysis:
+  enabled: true
+  
+  # When exports change, check all consumers
+  on_export_change:
+    notify_consumers: true
+    check_compatibility: true
+    require_migration_guide: true
+    
+  # Track where this library is used
+  usage_tracking:
+    enabled: true
+    report_duplications: true
+
+# Breaking change detection
+breaking_changes:
+  enabled: true
+  
+  # What constitutes a breaking change
+  rules:
+    - type: signature_change
+      description: "Function signature changed"
+      severity: critical
+      
+    - type: removed_export
+      description: "Exported function removed"
+      severity: critical
+      
+    - type: renamed_export
+      description: "Exported function renamed"
+      severity: critical
+      
+    - type: new_required_parameter
+      description: "New required parameter added"
+      severity: critical
+      example: "formatCurrency now requires locale parameter"
+      
+    - type: return_type_change
+      description: "Return type changed"
+      severity: major
+      
+    - type: behavior_change
+      description: "Function behavior changed"
+      severity: major
+
+  # Require these for breaking changes
+  requirements:
+    - semver_major_bump
+    - migration_guide
+    - changelog_entry
+    - consumer_notification
+
+# Code review settings
+review:
+  security:
+    enabled: true
+    check_hardcoded_secrets: false  # Library shouldn't have secrets
+    
+  quality:
+    enabled: true
+    check_test_coverage: true
+    min_coverage: 80
+    check_documentation: true
+    require_jsdoc: true
+    
+  breaking_changes:
+    enabled: true
+    require_approval_from:
+      - platform-team
+    block_merge_without:
+      - migration_guide
+      - version_bump
+
+# Duplication reporting
+duplication:
+  enabled: true
+  
+  # Report when consumers duplicate this library's code
+  report_consumer_duplications: true
+  
+  # Functions that are commonly duplicated
+  commonly_duplicated:
+    - name: validateOrderTotal
+      recommendation: "Import from shared-utils instead of reimplementing"
+      
+    - name: calculateTax
+      recommendation: "Import from shared-utils instead of reimplementing"
+      
+    - name: formatCurrency
+      recommendation: "Import from shared-utils instead of reimplementing"
+
+# Version management
+versioning:
+  strategy: semver
+  
+  # Auto-detect version bump needed
+  auto_detect:
+    patch:
+      - bug_fix
+      - documentation
+      - internal_refactor
+    minor:
+      - new_feature
+      - new_export
+      - deprecation
+    major:
+      - breaking_change
+      - removed_export
+      - signature_change
+
+# PR requirements for this library
+pr_requirements:
+  # Breaking changes need extra review
+  breaking_change:
+    required_reviewers: 2
+    required_labels:
+      - "breaking-change"
+      - "needs-migration-guide"
+    required_checks:
+      - consumer_compatibility
+      
+  # All PRs need
+  all:
+    required_checks:
+      - build
+      - test
+      - lint
+    required_labels:
+      - version_bump_type  # patch, minor, or major
+
+# Notifications
+notifications:
+  breaking_changes:
+    notify_repos:
+      - Shiw2807/orders-service
+      - Shiw2807/payments-service
+    channels:
+      - github_comment
+      - github_issue  # Create issue in consumer repos
+    message_template: |
+      ⚠️ Breaking Change in shared-utils
+      
+      Function: {{function_name}}
+      Change: {{change_description}}
+      
+      Migration Guide:
+      {{migration_guide}}
+      
+      Please update your code before upgrading to v{{new_version}}
+
+  new_version:
+    notify_repos:
+      - Shiw2807/orders-service
+      - Shiw2807/payments-service
+    channels:
+      - github_release
+
+# Consumer compatibility matrix
+compatibility:
+  matrix:
+    - consumer: orders-service
+      current_version: "1.0.0"
+      compatible_with: "^1.0.0"
+      incompatible_with: "^2.0.0"
+      reason: "Uses old formatCurrency signature"
+      files_to_update:
+        - src/utils/formatting.js
+        - src/services/orderProcessor.js
+        - src/utils/helpers.js
+        - src/models/Order.js
+        
+    - consumer: payments-service
+      current_version: "1.0.0"
+      compatible_with: "^1.0.0"
+      incompatible_with: "^2.0.0"
+      reason: "Uses old formatCurrency signature"
+      files_to_update:
+        - src/utils/formatting.py

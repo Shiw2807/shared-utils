@@ -1,0 +1,201 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "shared-utils Export Contract",
+  "description": "Defines the public API contract for shared-utils library",
+  "version": "2.0.0",
+  
+  "exports": {
+    "formatCurrency": {
+      "description": "Format a number as currency with locale support",
+      "signature": {
+        "current": "formatCurrency(amount: number, locale: string): string",
+        "previous": "formatCurrency(amount: number): string"
+      },
+      "parameters": [
+        {
+          "name": "amount",
+          "type": "number",
+          "required": true,
+          "description": "The amount to format"
+        },
+        {
+          "name": "locale",
+          "type": "string",
+          "required": true,
+          "description": "The locale for formatting (e.g., 'en-US', 'de-DE')",
+          "added_in": "2.0.0",
+          "breaking_change": true
+        }
+      ],
+      "returns": {
+        "type": "string",
+        "description": "Formatted currency string",
+        "examples": ["$99.99", "99,99 €"]
+      },
+      "throws": {
+        "condition": "locale is missing or empty",
+        "error": "Error: locale parameter is required in v2.0.0"
+      },
+      "breaking_change": {
+        "version": "2.0.0",
+        "type": "new_required_parameter",
+        "description": "locale parameter is now required",
+        "migration": {
+          "before": "formatCurrency(99.99)",
+          "after": "formatCurrency(99.99, 'en-US')"
+        },
+        "affected_consumers": [
+          {
+            "repo": "orders-service",
+            "files": [
+              "src/utils/formatting.js",
+              "src/services/orderProcessor.js",
+              "src/utils/helpers.js",
+              "src/models/Order.js"
+            ]
+          },
+          {
+            "repo": "payments-service",
+            "files": [
+              "src/utils/formatting.py"
+            ]
+          }
+        ]
+      }
+    },
+    
+    "validateOrderTotal": {
+      "description": "Validate that an order total is within acceptable range",
+      "signature": {
+        "current": "validateOrderTotal(total: number): boolean"
+      },
+      "parameters": [
+        {
+          "name": "total",
+          "type": "number",
+          "required": true,
+          "description": "The order total to validate"
+        }
+      ],
+      "returns": {
+        "type": "boolean",
+        "description": "true if valid, false otherwise"
+      },
+      "validation_rules": [
+        "Must be a number",
+        "Must not be NaN",
+        "Must be >= 0",
+        "Must be <= 1,000,000"
+      ],
+      "breaking_change": null,
+      "duplication_warning": {
+        "message": "This function is duplicated in multiple repos",
+        "locations": [
+          "orders-service/src/utils/validation.js",
+          "orders-service/src/services/orderProcessor.js",
+          "orders-service/src/models/Order.js",
+          "orders-service/src/utils/helpers.js",
+          "payments-service/src/utils/validation.py"
+        ],
+        "recommendation": "Remove duplicates and import from shared-utils"
+      }
+    },
+    
+    "generateOrderId": {
+      "description": "Generate a unique order ID",
+      "signature": {
+        "current": "generateOrderId(): string"
+      },
+      "parameters": [],
+      "returns": {
+        "type": "string",
+        "description": "Unique order ID",
+        "format": "ORD-{timestamp}-{random}",
+        "example": "ORD-LK2J3H-A8B9C2"
+      },
+      "breaking_change": null,
+      "duplication_warning": {
+        "message": "This function is duplicated",
+        "locations": [
+          "orders-service/src/utils/helpers.js"
+        ]
+      }
+    },
+    
+    "calculateTax": {
+      "description": "Calculate tax for an amount",
+      "signature": {
+        "current": "calculateTax(amount: number, taxRate?: number): number"
+      },
+      "parameters": [
+        {
+          "name": "amount",
+          "type": "number",
+          "required": true,
+          "description": "The amount to calculate tax for"
+        },
+        {
+          "name": "taxRate",
+          "type": "number",
+          "required": false,
+          "default": 0.1,
+          "description": "The tax rate (default 10%)"
+        }
+      ],
+      "returns": {
+        "type": "number",
+        "description": "The tax amount, rounded to 2 decimal places"
+      },
+      "breaking_change": null,
+      "duplication_warning": {
+        "message": "This function is duplicated",
+        "locations": [
+          "orders-service/src/services/orderProcessor.js",
+          "orders-service/src/models/Order.js",
+          "orders-service/src/utils/helpers.js"
+        ]
+      }
+    }
+  },
+  
+  "version_history": [
+    {
+      "version": "2.0.0",
+      "date": "2024-01-15",
+      "changes": [
+        {
+          "type": "breaking",
+          "export": "formatCurrency",
+          "description": "Added required locale parameter"
+        }
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2024-01-01",
+      "changes": [
+        {
+          "type": "initial",
+          "description": "Initial release with formatCurrency, validateOrderTotal, generateOrderId, calculateTax"
+        }
+      ]
+    }
+  ],
+  
+  "compatibility_matrix": {
+    "orders-service": {
+      "current_usage_version": "1.x",
+      "compatible": false,
+      "reason": "Uses formatCurrency without locale parameter",
+      "upgrade_effort": "medium",
+      "files_to_change": 4
+    },
+    "payments-service": {
+      "current_usage_version": "1.x",
+      "compatible": false,
+      "reason": "Uses formatCurrency without locale parameter",
+      "upgrade_effort": "low",
+      "files_to_change": 1
+    }
+  }
+}
